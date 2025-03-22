@@ -8,6 +8,8 @@ export default function TrendApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [category, setCategory] = useState("general");
+  const [trends, setTrends] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   // カテゴリーリスト
   const categories = [
@@ -41,7 +43,7 @@ export default function TrendApp() {
         title: `${localizedCategory}に関する最新ニュース ${i + 1}`,
         description: "これはモックデータです。APIキーが設定されていないか、APIの呼び出し制限に達した可能性があります。",
         url: "#",
-        image: null, // 画像なし
+        urlToImage: null, // 画像なし
         publishedAt: new Date().toISOString(),
         source: { name: "モックニュース" },
       }));
@@ -125,38 +127,71 @@ export default function TrendApp() {
     }
   };
 
-  // 疑似的なTwitterトレンドデータ
-  const [trends, setTrends] = useState([]);
-
+  // Yahoo!リアルタイム検索からトレンドを取得する改良された関数
   const fetchTrends = async () => {
-    // 実際のAPIが使えないためモックデータを使用
+    setTrendLoading(true);
+
+    try {
+      // 自作のAPI RouteにGETリクエスト
+      const response = await fetch("/api/trends");
+
+      if (!response.ok) {
+        throw new Error("トレンドの取得に失敗しました");
+      }
+
+      const data = await response.json();
+      console.log("Yahooトレンドデータ:", data);
+
+      if (!data || data.length === 0) {
+        // データがない場合はモックデータを使用
+        useMockTrends();
+        return;
+      }
+
+      // Yahoo!のトレンドデータをアプリの形式に変換
+      const formattedTrends = data.map((item) => ({
+        name: `#${item.word}`, // 先頭に#を付与
+        tweet_volume: Math.floor(Math.random() * 50000) + 10000, // ボリュームはダミー
+      }));
+
+      setTrends(formattedTrends.slice(0, 5));
+      console.log("Yahoo!リアルタイム検索からトレンドを取得しました");
+    } catch (err) {
+      console.error("トレンド取得エラー:", err);
+      // エラー時はモックデータにフォールバック
+      useMockTrends();
+    } finally {
+      setTrendLoading(false);
+    }
+  };
+
+  // モックトレンドデータを使用する関数（最新のトレンドで更新）
+  const useMockTrends = () => {
     const mockTrends = [
-      { name: "#プログラミング", tweet_volume: 24500 },
-      { name: "#React", tweet_volume: 18300 },
-      { name: "#NextJS", tweet_volume: 12800 },
-      { name: "#テクノロジー", tweet_volume: 45200 },
-      { name: "#新製品", tweet_volume: 32100 },
-      { name: "#イノベーション", tweet_volume: 15600 },
-      { name: "#デジタル化", tweet_volume: 28700 },
-      { name: "#AI", tweet_volume: 67400 },
-      { name: "#スマートフォン", tweet_volume: 19800 },
-      { name: "#SDGs", tweet_volume: 21300 },
+      { name: "#オレの司", tweet_volume: 87500 },
+      { name: "#アカデミー飯", tweet_volume: 64300 },
+      { name: "#引用元の消失", tweet_volume: 52800 },
+      { name: "#明浦路先生", tweet_volume: 45200 },
+      { name: "#田中樹アクターズスクール", tweet_volume: 38100 },
+      { name: "#でゃまれ", tweet_volume: 31600 },
+      { name: "#アリの王", tweet_volume: 28700 },
+      { name: "#菊池風磨構文", tweet_volume: 25400 },
+      { name: "#束縛グッズ", tweet_volume: 19800 },
+      { name: "#コメ不足", tweet_volume: 17300 },
     ];
 
-    // カテゴリに関連するトレンドだけをフィルタリング
-    const categoryKeywords = {
-      general: ["#ニュース", "#トレンド", "#話題"],
-      business: ["#ビジネス", "#経済", "#マーケット"],
-      technology: ["#テクノロジー", "#IT", "#デジタル"],
-      entertainment: ["#エンタメ", "#映画", "#音楽"],
-      health: ["#健康", "#医療", "#ウェルネス"],
-      science: ["#科学", "#研究", "#発見"],
-      sports: ["#スポーツ", "#試合", "#選手"],
-    };
+    // カテゴリに関連するトレンドだけをフィルタリング（オプション）
+    const filteredTrends = mockTrends.filter(
+      (trend) =>
+        Math.random() > 0.7 || // 70%の確率でランダムに選択
+        categoryKeywords[category]?.some((keyword) => trend.name.toLowerCase().includes(keyword.toLowerCase().replace("#", "")))
+    );
 
-    const filteredTrends = mockTrends.filter((trend) => Math.random() > 0.5 || categoryKeywords[category]?.some((keyword) => trend.name.toLowerCase().includes(keyword.toLowerCase().replace("#", ""))));
+    // 十分なトレンドがない場合は元のリストから追加
+    const finalTrends = filteredTrends.length >= 5 ? filteredTrends : [...filteredTrends, ...mockTrends.filter((t) => !filteredTrends.includes(t))];
 
-    setTrends(filteredTrends.slice(0, 5));
+    setTrends(finalTrends.slice(0, 5));
+    console.log("モックトレンドデータを使用しています");
   };
 
   // カテゴリー変更時にニュースとトレンドを取得
@@ -259,21 +294,28 @@ export default function TrendApp() {
           {/* サイドバー (トレンド) */}
           <div className="md:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4 sticky top-4">
-              <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">トレンドトピック</h2>
+              <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">日本のトレンドトピック</h2>
 
-              <ul className="space-y-3">
-                {trends.map((trend, index) => (
-                  <li key={index} className="p-2 hover:bg-gray-50 rounded">
-                    <div className="flex items-center">
-                      <span className="text-gray-500 text-sm mr-2">{index + 1}</span>
-                      <div>
-                        <p className="font-medium text-gray-800">{trend.name}</p>
-                        <p className="text-xs text-gray-500">約{(trend.tweet_volume / 1000).toFixed(1)}K件のツイート</p>
+              {/* トレンドローディング表示 */}
+              {trendLoading ? (
+                <div className="flex justify-center items-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {trends.map((trend, index) => (
+                    <li key={index} className="p-2 hover:bg-gray-50 rounded">
+                      <div className="flex items-center">
+                        <span className="text-gray-500 text-sm mr-2">{index + 1}</span>
+                        <div>
+                          <p className="font-medium text-gray-800">{trend.name}</p>
+                          <p className="text-xs text-gray-500">約{(trend.tweet_volume / 1000).toFixed(1)}K件のツイート</p>
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               <div className="mt-6 pt-4 border-t">
                 <h3 className="text-lg font-semibold mb-3">おすすめトピック</h3>
@@ -293,9 +335,9 @@ export default function TrendApp() {
       <footer className="bg-gray-800 text-white py-6 mt-12">
         <div className="container mx-auto px-4 text-center">
           <p>
-            このアプリはGNews APIのデータを使用しています。
+            このアプリはGNews APIとYahoo!リアルタイム検索APIのデータを使用しています。
             <br />
-            実際のトレンドデータはモックです。
+            エラー時はモックデータが表示されます。
           </p>
           <p className="mt-2 text-gray-400 text-sm">© {new Date().getFullYear()} トレンドビューアー - Next.js & Tailwind CSS製</p>
         </div>
