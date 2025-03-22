@@ -144,7 +144,7 @@ export default function TrendApp() {
 
       if (!data || data.length === 0) {
         // データがない場合はモックデータを使用
-        useMockTrends();
+        displayMockTrends();
         return;
       }
 
@@ -159,14 +159,14 @@ export default function TrendApp() {
     } catch (err) {
       console.error("トレンド取得エラー:", err);
       // エラー時はモックデータにフォールバック
-      useMockTrends();
+      displayMockTrends();
     } finally {
       setTrendLoading(false);
     }
   };
 
   // モックトレンドデータを使用する関数（最新のトレンドで更新）
-  const useMockTrends = () => {
+  const displayMockTrends = () => {
     const mockTrends = [
       { name: "#オレの司", tweet_volume: 87500 },
       { name: "#アカデミー飯", tweet_volume: 64300 },
